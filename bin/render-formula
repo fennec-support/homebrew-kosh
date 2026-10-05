@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#
+# Prints Formula/kosh.rb for one Koshka release. The first argument is the
+# release tag, and the second is the path of that release's SHA256SUMS file.
+#
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "usage: render-formula <version> <SHA256SUMS>" >&2
+  exit 2
+fi
+
+version=$1
+sums=$2
+base="https://github.com/fennec-support/kosh/releases/download/$version"
+
+checksum_of() {
+  local asset=$1
+  local sum
+
+  sum=$(awk -v name="$asset" '$2 == name { print $1 }' "$sums")
+  if [ -z "$sum" ]; then
+    echo "render-formula: $asset is missing from $sums" >&2
+    exit 1
+  fi
+
+  printf '%s' "$sum"
+}
+
+darwin_arm64="kosh-darwin-aarch64-$version"
+linux_arm64="kosh-linux-aarch64-$version"
+linux_amd64="kosh-linux-amd64-$version"
+
+darwin_arm64_sum=$(checksum_of "$darwin_arm64")
+linux_arm64_sum=$(checksum_of "$linux_arm64")
+linux_amd64_sum=$(checksum_of "$linux_amd64")
+
+cat <<EOF
+class Kosh < Formula
+  desc "Fast shell with static analysis and a language server"
+  homepage "https://github.com/fennec-support/kosh"
+  license "BSD-3-Clause"
+
+  on_macos do
+    depends_on arch: :arm64
+
+    url "$base/$darwin_arm64"
+    sha256 "$darwin_arm64_sum"
+  end
+
+  on_linux do
+    on_arm do
+      url "$base/$linux_arm64"
+      sha256 "$linux_arm64_sum"
+    end
+
+    on_intel do
+      url "$base/$linux_amd64"
+      sha256 "$linux_amd64_sum"
+    end
+  end
+
+  def install
+    asset = if OS.mac?
+      "kosh-darwin-aarch64-#{version}"
+    elsif Hardware::CPU.arm?
+      "kosh-linux-aarch64-#{version}"
+    else
+      "kosh-linux-amd64-#{version}"
+    end
+
+    bin.install asset => "kosh"
+  end
+
+  test do
+    assert_equal "hello", shell_output("#{bin}/kosh -c 'echo hello'").strip
+  end
+end
+EOF

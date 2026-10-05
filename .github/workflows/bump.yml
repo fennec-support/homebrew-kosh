@@ -1,0 +1,72 @@
+name: Bump
+
+on:
+  repository_dispatch:
+    types: [kosh-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release tag of fennec-support/kosh, for example 0.3.0
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      VERSION: ${{ github.event.client_payload.version || inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate the version
+        run: |
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "Not a release tag: '$VERSION'" >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Render the formula
+        run: |
+          gh release download "$VERSION" -R fennec-support/kosh -p SHA256SUMS -O "$RUNNER_TEMP/SHA256SUMS"
+          bin/render-formula "$VERSION" "$RUNNER_TEMP/SHA256SUMS" > Formula/kosh.rb
+          git diff --stat
+
+      - name: Commit locally
+        id: commit
+        run: |
+          if git diff --quiet; then
+            echo "The formula is already at $VERSION."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update kosh to $VERSION"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Put Homebrew on PATH
+        if: steps.commit.outputs.changed == 'true'
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+
+      - name: Audit
+        if: steps.commit.outputs.changed == 'true'
+        run: |
+          brew tap fennec-support/kosh "$GITHUB_WORKSPACE"
+          brew audit --strict --online fennec-support/kosh/kosh
+
+      - name: Push
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: git push origin "HEAD:$DEFAULT_BRANCH"

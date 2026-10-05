@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  formula:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Put Homebrew on PATH
+        if: runner.os == 'Linux'
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+
+      - name: Tap the working copy
+        run: brew tap fennec-support/kosh "$GITHUB_WORKSPACE"
+
+      - name: Audit
+        run: brew audit --strict --online fennec-support/kosh/kosh
+
+      - name: Install
+        run: brew install fennec-support/kosh/kosh
+
+      - name: Test
+        run: brew test fennec-support/kosh/kosh
