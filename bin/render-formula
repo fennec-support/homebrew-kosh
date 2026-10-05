@@ -44,8 +44,10 @@ class Kosh < Formula
   on_macos do
     depends_on arch: :arm64
 
-    url "$base/$darwin_arm64"
-    sha256 "$darwin_arm64_sum"
+    on_arm do
+      url "$base/$darwin_arm64"
+      sha256 "$darwin_arm64_sum"
+    end
   end
 
   on_linux do

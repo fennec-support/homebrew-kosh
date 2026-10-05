@@ -6,8 +6,10 @@ class Kosh < Formula
   on_macos do
     depends_on arch: :arm64
 
-    url "https://github.com/fennec-support/kosh/releases/download/0.3.0/kosh-darwin-aarch64-0.3.0"
-    sha256 "54713c220d40b2a98c8c3368fd681bc90cda6f2ad8d1c943a757260786d7c0bc"
+    on_arm do
+      url "https://github.com/fennec-support/kosh/releases/download/0.3.0/kosh-darwin-aarch64-0.3.0"
+      sha256 "54713c220d40b2a98c8c3368fd681bc90cda6f2ad8d1c943a757260786d7c0bc"
+    end
   end
 
   on_linux do
