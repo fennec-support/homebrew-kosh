@@ -1,3 +1,12 @@
+#
+#    This file is a part of the Koshka shell, (c) toiletbril, 2026
+#    See the top-level LICENSE file for the licensing information.
+#
+# This formula installs the prebuilt kosh binary from the newest
+# fennec-support/kosh release. It reads the newest tag from the releases/latest
+# redirect and each asset checksum from that release's SHA256SUMS file.
+#
+
 class Kosh < Formula
   RELEASES = "https://github.com/fennec-support/kosh/releases".freeze
 
