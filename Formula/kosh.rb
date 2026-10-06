@@ -1,38 +1,56 @@
 class Kosh < Formula
+  RELEASES = "https://github.com/fennec-support/kosh/releases".freeze
+
+  def self.latest_tag
+    @latest_tag ||= File.basename(
+      Utils::Curl.curl_output(
+        "--fail", "--silent", "--location", "--head",
+        "--output", File::NULL, "--write-out", "%{url_effective}",
+        "#{RELEASES}/latest"
+      ).stdout.strip,
+    )
+  end
+
+  def self.asset_url(platform)
+    "#{RELEASES}/download/#{latest_tag}/kosh-#{platform}-#{latest_tag}"
+  end
+
+  def self.asset_sha256(platform)
+    @checksums ||= Utils::Curl.curl_output(
+      "--fail", "--silent", "--location",
+      "#{RELEASES}/download/#{latest_tag}/SHA256SUMS"
+    ).stdout.lines.to_h { |line| line.split.reverse }
+    @checksums.fetch("kosh-#{platform}-#{latest_tag}")
+  end
+
   desc "Fast shell with static analysis and a language server"
   homepage "https://github.com/fennec-support/kosh"
+  version latest_tag
   license "BSD-3-Clause"
 
   on_macos do
     depends_on arch: :arm64
 
     on_arm do
-      url "https://github.com/fennec-support/kosh/releases/download/0.3.0/kosh-darwin-aarch64-0.3.0"
-      sha256 "54713c220d40b2a98c8c3368fd681bc90cda6f2ad8d1c943a757260786d7c0bc"
+      url asset_url("darwin-aarch64")
+      sha256 asset_sha256("darwin-aarch64")
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/fennec-support/kosh/releases/download/0.3.0/kosh-linux-aarch64-0.3.0"
-      sha256 "08491f6f59785e2794fdce585738d9c026cb1db5901729fb6c331fb7bf9c0957"
+      url asset_url("linux-aarch64")
+      sha256 asset_sha256("linux-aarch64")
     end
 
     on_intel do
-      url "https://github.com/fennec-support/kosh/releases/download/0.3.0/kosh-linux-amd64-0.3.0"
-      sha256 "5f25b35075526b3bbc37c1c6e57d53a52724109a168825092c08e7121d86ee2c"
+      url asset_url("linux-amd64")
+      sha256 asset_sha256("linux-amd64")
     end
   end
 
   def install
-    asset = if OS.mac?
-      "kosh-darwin-aarch64-#{version}"
-    elsif Hardware::CPU.arm?
-      "kosh-linux-aarch64-#{version}"
-    else
-      "kosh-linux-amd64-#{version}"
-    end
-
+    asset = Dir["kosh-*"].first
     bin.install asset => "kosh"
   end
 

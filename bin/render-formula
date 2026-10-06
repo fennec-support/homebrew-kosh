@@ -1,39 +1,41 @@
 #!/usr/bin/env bash
+
 #
 # Prints Formula/kosh.rb for one Koshka release. The first argument is the
 # release tag, and the second is the path of that release's SHA256SUMS file.
 #
 set -euo pipefail
-
-if [ "$#" -ne 2 ]; then
+if [ "$#" -ne 2 ]
+then
   echo "usage: render-formula <version> <SHA256SUMS>" >&2
   exit 2
 fi
 
-version=$1
-sums=$2
-base="https://github.com/fennec-support/kosh/releases/download/$version"
+VERSION=$1
+SUMS=$2
+BASE="https://github.com/fennec-support/kosh/releases/download/$VERSION"
 
-checksum_of() {
-  local asset=$1
-  local sum
+checksum_of ()
+{
+  local ASSET=$1
+  local SUM
+  SUM=$(awk -v name="$ASSET" '$2 == name { print $1 }' "$SUMS")
 
-  sum=$(awk -v name="$asset" '$2 == name { print $1 }' "$sums")
-  if [ -z "$sum" ]; then
-    echo "render-formula: $asset is missing from $sums" >&2
+  if [ -z "$SUM" ]
+  then
+    echo "render-formula: $ASSET is missing from $SUMS" >&2
     exit 1
   fi
 
-  printf '%s' "$sum"
+  printf '%s' "$SUM"
 }
 
-darwin_arm64="kosh-darwin-aarch64-$version"
-linux_arm64="kosh-linux-aarch64-$version"
-linux_amd64="kosh-linux-amd64-$version"
-
-darwin_arm64_sum=$(checksum_of "$darwin_arm64")
-linux_arm64_sum=$(checksum_of "$linux_arm64")
-linux_amd64_sum=$(checksum_of "$linux_amd64")
+DARWIN_ARM64="kosh-darwin-aarch64-$VERSION"
+LINUX_ARM64="kosh-linux-aarch64-$VERSION"
+LINUX_AMD64="kosh-linux-amd64-$VERSION"
+DARWIN_ARM64_SUM=$(checksum_of "$DARWIN_ARM64")
+LINUX_ARM64_SUM=$(checksum_of "$LINUX_ARM64")
+LINUX_AMD64_SUM=$(checksum_of "$LINUX_AMD64")
 
 cat <<EOF
 class Kosh < Formula
@@ -45,20 +47,20 @@ class Kosh < Formula
     depends_on arch: :arm64
 
     on_arm do
-      url "$base/$darwin_arm64"
-      sha256 "$darwin_arm64_sum"
+      url "$BASE/$DARWIN_ARM64"
+      sha256 "$DARWIN_ARM64_SUM"
     end
   end
 
   on_linux do
     on_arm do
-      url "$base/$linux_arm64"
-      sha256 "$linux_arm64_sum"
+      url "$BASE/$LINUX_ARM64"
+      sha256 "$LINUX_ARM64_SUM"
     end
 
     on_intel do
-      url "$base/$linux_amd64"
-      sha256 "$linux_amd64_sum"
+      url "$BASE/$LINUX_AMD64"
+      sha256 "$LINUX_AMD64_SUM"
     end
   end
 
