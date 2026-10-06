@@ -2,13 +2,8 @@ class Kosh < Formula
   RELEASES = "https://github.com/fennec-support/kosh/releases".freeze
 
   def self.latest_tag
-    @latest_tag ||= File.basename(
-      Utils::Curl.curl_output(
-        "--fail", "--silent", "--location", "--head",
-        "--output", File::NULL, "--write-out", "%{url_effective}",
-        "#{RELEASES}/latest"
-      ).stdout.strip,
-    )
+    @latest_tag ||= Utils::Curl.curl_output("--silent", "--head", "#{RELEASES}/latest")
+                               .stdout[%r{^location:\s*\S+/releases/tag/(\S+)}i, 1]
   end
 
   def self.asset_url(platform)
@@ -25,7 +20,6 @@ class Kosh < Formula
 
   desc "Fast shell with static analysis and a language server"
   homepage "https://github.com/fennec-support/kosh"
-  version latest_tag
   license "BSD-3-Clause"
 
   on_macos do
